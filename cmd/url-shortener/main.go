@@ -4,8 +4,13 @@ import (
 	"log/slog"
 	"os"
 	"url_shortener/internal/config"
-	"url_shortener/internal/lib/sl"
+	"url_shortener/internal/lib/logger/handler/slogpretty"
+	"url_shortener/internal/lib/logger/sl"
 	"url_shortener/internal/storage/sqlite"
+
+	"github.com/go-chi/chi/v5/middleware"
+
+	"github.com/go-chi/chi/v5"
 )
 
 const (
@@ -29,6 +34,10 @@ func main() {
 
 	_ = storage
 
+	router := chi.NewRouter()
+	router.Use(middleware.RequestID)
+	router.Use(middleware.Logger)
+
 }
 
 func setupLogger(env string) *slog.Logger {
@@ -36,9 +45,7 @@ func setupLogger(env string) *slog.Logger {
 
 	switch env {
 	case envLocal:
-		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		)
+		log = setupPrettySlog()
 	case envDev:
 		log = slog.New(
 			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
@@ -49,4 +56,15 @@ func setupLogger(env string) *slog.Logger {
 		)
 	}
 	return log
+}
+func setupPrettySlog() *slog.Logger {
+	opts := slogpretty.PrettyHandlerOptions{
+		SlogOpts: &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		},
+	}
+
+	handler := opts.NewPrettyHandler(os.Stdout)
+
+	return slog.New(handler)
 }
